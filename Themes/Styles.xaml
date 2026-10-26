@@ -1,0 +1,78 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:models="clr-namespace:DockNest.Models">
+    <SolidColorBrush x:Key="CanvasBrush" Color="#0F141C" />
+    <SolidColorBrush x:Key="SidebarBrush" Color="#141B25" />
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#19222E" />
+    <SolidColorBrush x:Key="HoverBrush" Color="#222E3D" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#283443" />
+    <SolidColorBrush x:Key="TextBrush" Color="#ECF1F7" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#9CAABB" />
+    <SolidColorBrush x:Key="SubtleBrush" Color="#6C7F94" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#86E1C6" />
+    <SolidColorBrush x:Key="AccentTextBrush" Color="#102A25" />
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#203E3A" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#F59A9A" />
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    <Style TargetType="TextBlock"><Setter Property="FontSize" Value="13" /></Style>
+    <Style x:Key="Glyph" TargetType="TextBlock"><Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" /><Setter Property="FontSize" Value="17" /><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="HorizontalAlignment" Value="Center" /><Setter Property="Foreground" Value="{DynamicResource MutedBrush}" /></Style>
+    <Style TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" /><Setter Property="Background" Value="{DynamicResource SurfaceBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="Padding" Value="16,9" /><Setter Property="FontSize" Value="13" /><Setter Property="Cursor" Value="Hand" /><Setter Property="HorizontalContentAlignment" Value="Center" /><Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+            <Border x:Name="Chrome" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" RecognizesAccessKey="True" /></Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Chrome" Property="Opacity" Value="0.78" /></Trigger>
+                <Trigger Property="IsPressed" Value="True"><Setter TargetName="Chrome" Property="Opacity" Value="0.58" /></Trigger>
+                <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></Trigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Chrome" Property="Opacity" Value="0.38" /></Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Background" Value="{DynamicResource AccentBrush}" /><Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" /><Setter Property="BorderThickness" Value="0" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
+    <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Width" Value="34" /><Setter Property="Height" Value="32" /><Setter Property="Padding" Value="0" /><Setter Property="BorderThickness" Value="0" /><Setter Property="Background" Value="Transparent" /><Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" /><Setter Property="FontSize" Value="15" /><Setter Property="Foreground" Value="{DynamicResource MutedBrush}" /></Style>
+    <Style x:Key="BookmarkActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Width" Value="30" /><Setter Property="Height" Value="28" /><Setter Property="Margin" Value="2,0,0,0" />
+        <Setter Property="Padding" Value="0" /><Setter Property="BorderThickness" Value="0" /><Setter Property="Background" Value="Transparent" />
+        <Setter Property="FontFamily" Value="Segoe UI, Microsoft YaHei UI" /><Setter Property="FontSize" Value="11" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" /><Setter Property="ToolTipService.InitialShowDelay" Value="300" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource HoverBrush}" /><Setter Property="Foreground" Value="{DynamicResource TextBrush}" /></Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" /><Setter Property="Foreground" Value="{DynamicResource AccentBrush}" /></Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="BookmarkPathActionButton" TargetType="Button" BasedOn="{StaticResource BookmarkActionButton}">
+        <Style.Triggers><DataTrigger Binding="{Binding Kind}" Value="{x:Static models:BookmarkKind.Url}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+    </Style>
+    <Style TargetType="TextBox">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" /><Setter Property="CaretBrush" Value="{DynamicResource AccentBrush}" /><Setter Property="Background" Value="{DynamicResource CanvasBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="Padding" Value="12,10" /><Setter Property="FontSize" Value="13" /><Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TextBox"><Border x:Name="Chrome" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7"><ScrollViewer x:Name="PART_ContentHost" Style="{x:Null}" /></Border><ControlTemplate.Triggers><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style TargetType="ListBox"><Setter Property="Foreground" Value="{DynamicResource TextBrush}" /><Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" /><Setter Property="HorizontalContentAlignment" Value="Stretch" /></Style>
+    <Style x:Key="GroupItem" TargetType="ListBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" /><Setter Property="HorizontalContentAlignment" Value="Stretch" /><Setter Property="Padding" Value="14,12" /><Setter Property="Margin" Value="0,2" /><Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><Border x:Name="Chrome" CornerRadius="8" Padding="{TemplateBinding Padding}" Background="Transparent"><ContentPresenter /></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Chrome" Property="Background" Value="{DynamicResource HoverBrush}" /></Trigger><Trigger Property="IsSelected" Value="True"><Setter TargetName="Chrome" Property="Background" Value="{DynamicResource AccentSoftBrush}" /><Setter Property="Foreground" Value="{DynamicResource AccentBrush}" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="BookmarkRow" TargetType="ListBoxItem"><Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" /><Setter Property="Margin" Value="0,0,0,8" /><Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><Border x:Name="Chrome" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16,14"><ContentPresenter /></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Chrome" Property="Background" Value="{DynamicResource HoverBrush}" /></Trigger><Trigger Property="IsSelected" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="FilterItem" TargetType="ListBoxItem" BasedOn="{StaticResource GroupItem}"><Setter Property="Padding" Value="12,7" /><Setter Property="Margin" Value="0,0,6,0" /></Style>
+    <Style TargetType="ComboBox">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" /><Setter Property="Background" Value="{DynamicResource CanvasBrush}" /><Setter Property="Padding" Value="12,10" /><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox"><Grid>
+            <ToggleButton Style="{x:Null}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Focusable="False" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"><ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="{DynamicResource CanvasBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="7"><TextBlock Foreground="{DynamicResource MutedBrush}" Text="⌄" HorizontalAlignment="Right" Margin="0,0,12,0" VerticalAlignment="Center" /></Border></ControlTemplate></ToggleButton.Template></ToggleButton>
+            <ContentPresenter Margin="12,10,32,10" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" />
+            <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False"><Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="7" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="280" Padding="4"><ScrollViewer><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" /></ScrollViewer></Border></Popup>
+        </Grid></ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style TargetType="ComboBoxItem"><Setter Property="Padding" Value="10,8" /><Setter Property="Foreground" Value="{DynamicResource TextBrush}" /><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem"><Border x:Name="Chrome" Padding="{TemplateBinding Padding}" CornerRadius="5" Background="Transparent"><ContentPresenter /></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Chrome" Property="Background" Value="{DynamicResource HoverBrush}" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
+    <!-- Keep the WPF UI menu template aligned with its menu-item templates. -->
+    <Style TargetType="ContextMenu" BasedOn="{StaticResource {x:Type ContextMenu}}">
+        <!-- Popup text must not inherit the glyph font or size from an IconButton placement target. -->
+        <Setter Property="FontFamily" Value="Segoe UI, Microsoft YaHei UI" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="Padding" Value="4" />
+    </Style>
+    <Style TargetType="ToolTip"><Setter Property="Background" Value="{DynamicResource SurfaceBrush}" /><Setter Property="Foreground" Value="{DynamicResource TextBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" /><Setter Property="Padding" Value="10,6" /></Style>
+</ResourceDictionary>

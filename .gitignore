@@ -1,0 +1,34 @@
+# .NET build and publish output
+[Bb]in/
+[Oo]bj/
+/artifacts/
+
+# Visual Studio / Rider local settings
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.sln.iml
+
+# Test results and coverage output
+TestResults/
+coverage/
+*.trx
+*.coverage
+*.coveragexml
+
+# Local environment, logs and temporary files
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+*.temp
+
+# Operating system metadata
+Thumbs.db
+Desktop.ini
+.DS_Store
