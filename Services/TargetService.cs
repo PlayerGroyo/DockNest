@@ -1,3 +1,4 @@
+using L = DockNest.Services.LocalizationService;
 using System.Diagnostics;
 using System.IO;
 using DockNest.Models;
@@ -9,13 +10,13 @@ public static class TargetService
     public static Bookmark Create(string target, string? name = null)
     {
         target = Environment.ExpandEnvironmentVariables(target.Trim().Trim('"'));
-        if (string.IsNullOrWhiteSpace(target)) throw new ArgumentException("请填写路径或网址。");
+        if (string.IsNullOrWhiteSpace(target)) throw new ArgumentException(L.Get("PathRequired"));
         BookmarkKind kind;
         string suggestedName;
         if (Uri.TryCreate(target, UriKind.Absolute, out var uri) &&
             (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
         {
-            if (string.IsNullOrWhiteSpace(uri.Host)) throw new ArgumentException("请输入完整的网址。");
+            if (string.IsNullOrWhiteSpace(uri.Host)) throw new ArgumentException(L.Get("FullUrlRequired"));
             kind = BookmarkKind.Url;
             target = uri.AbsoluteUri;
             suggestedName = uri.Host;
@@ -26,13 +27,13 @@ public static class TargetService
                 target.Contains('*') || target.Contains('?') ||
                 target.StartsWith("\\\\?\\", StringComparison.Ordinal) ||
                 target.StartsWith("\\\\.\\", StringComparison.Ordinal))
-                throw new ArgumentException("请输入完整的本地路径、\\\\服务器\\共享路径，或 http / https 网址。");
+                throw new ArgumentException(L.Get("FullPathRequired"));
             target = Path.GetFullPath(target);
             // UNC shares can be offline. Do not probe them while adding or rendering a bookmark.
             if (target.StartsWith("\\\\", StringComparison.Ordinal)) kind = BookmarkKind.NetworkPath;
             else if (Directory.Exists(target)) kind = BookmarkKind.Folder;
             else if (File.Exists(target)) kind = BookmarkKind.File;
-            else throw new ArgumentException("本地路径不存在，请检查路径后重试。");
+            else throw new ArgumentException(L.Get("PathMissing"));
             suggestedName = Path.GetFileName(Path.TrimEndingDirectorySeparator(target));
             if (string.IsNullOrEmpty(suggestedName)) suggestedName = target;
         }
@@ -57,7 +58,7 @@ public static class TargetService
 
     public static void Reveal(Bookmark item)
     {
-        if (item.Kind == BookmarkKind.Url) throw new InvalidOperationException("网页没有本地所在位置。");
+        if (item.Kind == BookmarkKind.Url) throw new InvalidOperationException(L.Get("UrlNoLocation"));
         var checkedItem = Create(item.Target);
         var start = new ProcessStartInfo("explorer.exe") { UseShellExecute = false };
         if (checkedItem.Kind == BookmarkKind.File)

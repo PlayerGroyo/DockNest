@@ -1,3 +1,4 @@
+using L = DockNest.Services.LocalizationService;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
@@ -28,6 +29,8 @@ public partial class MainWindow : Window
     public MainWindow(StateStore store, AppState state, bool enableDesktopIntegration = true)
     {
         desktopIntegration = enableDesktopIntegration;
+        state.Settings.Language = L.Normalize(state.Settings.Language);
+        L.Apply(state.Settings.Language);
         ViewModel = new MainViewModel(store, state);
         InitializeComponent();
         DataContext = ViewModel;
@@ -43,13 +46,15 @@ public partial class MainWindow : Window
         Topmost = state.Settings.AlwaysOnTop;
         SourceInitialized += OnSourceInitialized;
         Closing += OnClosing;
-        Closed += (_, _) => { hotkey?.Dispose(); docking?.Dispose(); };
+        L.LanguageChanged += RefreshLanguage;
+        Closed += (_, _) => { L.LanguageChanged -= RefreshLanguage; hotkey?.Dispose(); docking?.Dispose(); };
         Loaded += (_, _) =>
         {
             docking?.KeepOnScreen();
             if (store.RecoveryNotice is not null) ReportError(store.RecoveryNotice);
         };
         UpdateHotkeyLabel();
+        UpdateDockStatus();
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -57,18 +62,14 @@ public partial class MainWindow : Window
         if (!desktopIntegration) return;
         var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
         docking = new EdgeDockController(this, source) { Enabled = ViewModel.Settings.AutoHide };
-        docking.StateChanged += () =>
-        {
-            var edge = docking.Edge switch { DockEdge.Left => "左侧", DockEdge.Right => "右侧", DockEdge.Top => "顶部", DockEdge.Bottom => "底部", _ => "" };
-            DockStatus.Text = docking.Edge == DockEdge.None ? "自由悬浮" : edge + (docking.IsHidden ? " · 已隐藏" : " · 自动隐藏");
-        };
+        docking.StateChanged += UpdateDockStatus;
         hotkey = new HotkeyService(source, () => { if (modalDepth == 0) docking.Toggle(); else Activate(); });
         if (!hotkey.TryRegister(ViewModel.Settings.HotkeyModifiers, ViewModel.Settings.HotkeyKey))
             Dispatcher.BeginInvoke(() =>
             {
-                ViewModel.Status = "快捷键被占用 · 请在设置中更换组合";
+                ViewModel.Status = L.Get("HotkeyConflictStatus");
                 UpdateHotkeyLabel();
-                ReportError("显示 / 隐藏快捷键注册失败，可能已被输入法或其他程序占用。请打开右上角设置更换组合。");
+                ReportError(L.Get("HotkeyConflict"));
             });
         UpdateHotkeyLabel();
     }
@@ -93,7 +94,22 @@ public partial class MainWindow : Window
 
     private void UpdateHotkeyLabel() => HotkeyLabel.Text =
         HotkeyService.Format(ViewModel.Settings.HotkeyModifiers, ViewModel.Settings.HotkeyKey) +
-        (desktopIntegration && hotkey is not null && !hotkey.IsRegistered ? "   未注册" : "   唤出 / 隐藏");
+        (desktopIntegration && hotkey is not null && !hotkey.IsRegistered ? L.Get("HotkeyUnavailable") : L.Get("HotkeyHint"));
+
+    private void UpdateDockStatus()
+    {
+        var edge = docking?.Edge ?? DockEdge.None;
+        var name = edge switch { DockEdge.Left => L.Get("DockLeft"), DockEdge.Right => L.Get("DockRight"), DockEdge.Top => L.Get("DockTop"), DockEdge.Bottom => L.Get("DockBottom"), _ => "" };
+        DockStatus.Text = edge == DockEdge.None ? L.Get("Floating") : L.Format(docking!.IsHidden ? "DockHidden" : "DockVisible", name);
+    }
+
+    private void RefreshLanguage()
+    {
+        ViewModel.RefreshLanguage();
+        ViewModel.Status = L.Get("Ready");
+        UpdateHotkeyLabel();
+        UpdateDockStatus();
+    }
 
     private bool ShowEditor(Window dialog)
     {
@@ -130,11 +146,11 @@ public partial class MainWindow : Window
 
     private void AddGroup()
     {
-        var dialog = new NameDialog("新建分组");
-        if (ShowEditor(dialog)) Try(() => { ViewModel.AddGroup(dialog.Value); ViewModel.Status = "分组已创建"; });
+        var dialog = new NameDialog(L.Get("NewGroup"));
+        if (ShowEditor(dialog)) Try(() => { ViewModel.AddGroup(dialog.Value); ViewModel.Status = L.Get("GroupCreated"); });
     }
 
-    private BookmarkGroup EnsureGroup() => ViewModel.SelectedGroup ?? ViewModel.Groups.FirstOrDefault() ?? ViewModel.AddGroup("常用");
+    private BookmarkGroup EnsureGroup() => ViewModel.SelectedGroup ?? ViewModel.Groups.FirstOrDefault() ?? ViewModel.AddGroup(L.Get("DefaultGroup"));
 
     private void AddBookmark_Click(object sender, RoutedEventArgs e) => Try(() =>
     {
@@ -144,7 +160,7 @@ public partial class MainWindow : Window
         {
             ViewModel.AddBookmark(dialog.SelectedGroup, dialog.Result);
             ViewModel.SelectedGroup = dialog.SelectedGroup;
-            ViewModel.Status = "已添加收藏 · " + dialog.Result.Name;
+            ViewModel.Status = L.Format("BookmarkAdded", dialog.Result.Name);
         }
     });
 
@@ -160,24 +176,24 @@ public partial class MainWindow : Window
         if (dialog.SelectedGroup == source) source.Items.Insert(index, edited);
         else dialog.SelectedGroup.Items.Add(edited);
         ViewModel.Save();
-        ViewModel.Status = "收藏已更新";
+        ViewModel.Status = L.Get("BookmarkUpdated");
     });
 
     private void RemoveBookmark(Bookmark item)
     {
-        if (!Confirm($"移除收藏“{item.Name}”？\n只移除收藏记录，原文件和文件夹保持不变。")) return;
-        Try(() => { ViewModel.FindGroup(item)?.Items.Remove(item); ViewModel.Save(); ViewModel.Status = "收藏已移除"; });
+        if (!Confirm(L.Format("RemoveConfirm", item.Name))) return;
+        Try(() => { ViewModel.FindGroup(item)?.Items.Remove(item); ViewModel.Save(); ViewModel.Status = L.Get("BookmarkRemoved"); });
     }
 
     private async void OpenBookmark(Bookmark item)
     {
-        ViewModel.Status = "正在打开 · " + item.Name;
+        ViewModel.Status = L.Format("Opening", item.Name);
         try
         {
             await Task.Run(() => TargetService.Open(item));
-            ViewModel.Status = "已打开 · " + item.Name;
+            ViewModel.Status = L.Format("Opened", item.Name);
         }
-        catch (Exception error) { ReportError("无法打开目标，可右键编辑地址。\n" + error.Message); }
+        catch (Exception error) { ReportError(L.Format("OpenFailed", error.Message)); }
     }
 
     private void AllBookmarks_Click(object sender, RoutedEventArgs e) => ViewModel.SelectedGroup = null;
@@ -192,13 +208,16 @@ public partial class MainWindow : Window
 
     private void Settings_Click(object sender, RoutedEventArgs e) => Try(() =>
     {
+        var previousLanguage = ViewModel.Settings.Language;
         var dialog = new SettingsWindow(ViewModel.Settings, (modifiers, key) => hotkey?.TryRegister(modifiers, key) ?? true, ViewModel.DataPath);
         if (!ShowEditor(dialog)) return;
         if (docking is not null) docking.Enabled = ViewModel.Settings.AutoHide;
         Topmost = ViewModel.Settings.AlwaysOnTop;
         UpdateHotkeyLabel();
-        ViewModel.Save();
-        ViewModel.Status = "设置已保存";
+        try { ViewModel.Save(); }
+        catch { ViewModel.Settings.Language = previousLanguage; throw; }
+        L.Apply(ViewModel.Settings.Language);
+        ViewModel.Status = L.Get("SettingsSaved");
     });
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -230,7 +249,7 @@ public partial class MainWindow : Window
         catch (Exception error)
         {
             e.Cancel = true;
-            ReportError("数据未能保存，窗口暂未关闭。请检查目录权限或磁盘空间后重试。\n" + error.Message);
+            ReportError(L.Format("SaveFailed", error.Message));
         }
     }
 
@@ -304,7 +323,7 @@ public partial class MainWindow : Window
     {
         // Clipboard monitors can briefly hold the clipboard while receiving an update.
         System.Windows.Forms.Clipboard.SetDataObject(item.Target, true, 5, 100);
-        ViewModel.Status = "地址已复制";
+        ViewModel.Status = L.Get("AddressCopied");
     }
 
     private void ShowBookmarkGit(Bookmark item) => ShowEditor(new GitWindow(item.Target, ViewModel.Settings.GitExecutable));
@@ -327,24 +346,24 @@ public partial class MainWindow : Window
     private void ShowBookmarkMenu(Bookmark item, FrameworkElement element)
     {
         var menu = new ContextMenu();
-        menu.Items.Add(Menu("打开", () => OpenBookmark(item)));
-        menu.Items.Add(Menu("编辑收藏…", () => EditBookmark(item)));
-        menu.Items.Add(Menu("复制地址", () => CopyBookmark(item)));
+        menu.Items.Add(Menu(L.Get("Open"), () => OpenBookmark(item)));
+        menu.Items.Add(Menu(L.Get("EditBookmarkMenu"), () => EditBookmark(item)));
+        menu.Items.Add(Menu(L.Get("CopyAddress"), () => CopyBookmark(item)));
         if (item.Kind != BookmarkKind.Url)
         {
-            menu.Items.Add(Menu("在资源管理器中查看", () => RevealTarget(item)));
-            menu.Items.Add(Menu("Git 仓库操作…", () => ShowBookmarkGit(item)));
+            menu.Items.Add(Menu(L.Get("RevealInExplorer"), () => RevealTarget(item)));
+            menu.Items.Add(Menu(L.Get("GitOperationsMenu"), () => ShowBookmarkGit(item)));
         }
         var source = ViewModel.FindGroup(item);
-        var move = new MenuItem { Header = "移动到分组", IsEnabled = ViewModel.Groups.Count > 1 };
+        var move = new MenuItem { Header = L.Get("MoveToGroup"), IsEnabled = ViewModel.Groups.Count > 1 };
         foreach (var group in ViewModel.Groups.Where(g => g != source))
-            move.Items.Add(Menu(group.Name, () => { ViewModel.MoveBookmark(item, group); ViewModel.Status = "已移动到 " + group.Name; }));
+            move.Items.Add(Menu(group.Name, () => { ViewModel.MoveBookmark(item, group); ViewModel.Status = L.Format("Moved", group.Name); }));
         menu.Items.Add(move);
         var index = source?.Items.IndexOf(item) ?? -1;
-        menu.Items.Add(Menu("上移", () => { source!.Items.Move(index, index - 1); ViewModel.Save(); }, index > 0));
-        menu.Items.Add(Menu("下移", () => { source!.Items.Move(index, index + 1); ViewModel.Save(); }, source is not null && index < source.Items.Count - 1));
+        menu.Items.Add(Menu(L.Get("MoveUp"), () => { source!.Items.Move(index, index - 1); ViewModel.Save(); }, index > 0));
+        menu.Items.Add(Menu(L.Get("MoveDown"), () => { source!.Items.Move(index, index + 1); ViewModel.Save(); }, source is not null && index < source.Items.Count - 1));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Menu("移除收藏", () => RemoveBookmark(item)));
+        menu.Items.Add(Menu(L.Get("RemoveBookmark"), () => RemoveBookmark(item)));
         ShowContext(menu, element);
     }
 
@@ -359,22 +378,22 @@ public partial class MainWindow : Window
         var container = FindParent<ListBoxItem>(e.OriginalSource as DependencyObject);
         if (container?.DataContext is not BookmarkGroup group) return;
         var menu = new ContextMenu();
-        menu.Items.Add(Menu("重命名…", () =>
+        menu.Items.Add(Menu(L.Get("Rename"), () =>
         {
-            var dialog = new NameDialog("重命名分组", group.Name);
+            var dialog = new NameDialog(L.Get("RenameGroup"), group.Name);
             if (!ShowEditor(dialog)) return;
             if (ViewModel.Groups.Any(g => g != group && string.Equals(g.Name, dialog.Value, StringComparison.CurrentCultureIgnoreCase)))
-                throw new ArgumentException("已经有同名分组。");
+                throw new ArgumentException(L.Get("DuplicateGroup"));
             group.Name = dialog.Value;
             ViewModel.Save();
         }));
         var index = ViewModel.Groups.IndexOf(group);
-        menu.Items.Add(Menu("上移", () => { ViewModel.Groups.Move(index, index - 1); ViewModel.Save(); }, index > 0));
-        menu.Items.Add(Menu("下移", () => { ViewModel.Groups.Move(index, index + 1); ViewModel.Save(); }, index < ViewModel.Groups.Count - 1));
+        menu.Items.Add(Menu(L.Get("MoveUp"), () => { ViewModel.Groups.Move(index, index - 1); ViewModel.Save(); }, index > 0));
+        menu.Items.Add(Menu(L.Get("MoveDown"), () => { ViewModel.Groups.Move(index, index + 1); ViewModel.Save(); }, index < ViewModel.Groups.Count - 1));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Menu("删除分组", () =>
+        menu.Items.Add(Menu(L.Get("DeleteGroup"), () =>
         {
-            if (!Confirm($"删除分组“{group.Name}”及其中的 {group.Items.Count} 条收藏记录？\n原文件和文件夹保持不变。")) return;
+            if (!Confirm(L.Format("DeleteGroupConfirm", group.Name, group.Items.Count))) return;
             ViewModel.Groups.Remove(group);
             if (ViewModel.SelectedGroup == group) ViewModel.SelectedGroup = null;
             ViewModel.Save();
@@ -421,11 +440,11 @@ public partial class MainWindow : Window
         foreach (var path in paths)
         {
             try { if (ViewModel.AddBookmark(group, TargetService.Create(path))) added++; else duplicates++; }
-            catch (Exception error) { errors.Add(path + "：" + error.Message); }
+            catch (Exception error) { errors.Add(path + ": " + error.Message); }
         }
         ViewModel.SelectedGroup = group;
-        ViewModel.Status = $"已添加 {added} 个收藏" + (duplicates > 0 ? $" · 跳过 {duplicates} 个重复地址" : "");
-        if (errors.Count > 0) ReportError($"已添加 {added} 个收藏；以下地址未能添加：\n" + string.Join("\n", errors.Take(6)));
+        ViewModel.Status = L.Format("DropAdded", added) + (duplicates > 0 ? L.Format("DropDuplicates", duplicates) : "");
+        if (errors.Count > 0) ReportError(L.Format("DropErrors", added, string.Join("\n", errors.Take(6))));
     });
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)

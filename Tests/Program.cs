@@ -26,13 +26,19 @@ internal static class Program
     {
         var dockingOnly = args.Contains("--docking");
         var trayOnly = args.Contains("--tray");
-        var resultFile = trayOnly ? "tray-result.json" : dockingOnly ? "docking-result.json" : "result.json";
+        var localizationOnly = args.Contains("--localization");
+        var resultFile = localizationOnly ? "localization-result.json" : trayOnly ? "tray-result.json" : dockingOnly ? "docking-result.json" : "result.json";
         artifacts = Path.GetFullPath(args.FirstOrDefault(a => !a.StartsWith("--")) ?? "artifacts/verification");
         fixtures = Path.Combine(artifacts, "fixtures", DateTime.Now.ToString("yyyyMMdd-HHmmssfff"));
         Directory.CreateDirectory(fixtures);
         try
         {
-            if (trayOnly)
+            if (localizationOnly)
+            {
+                CreateTestApplication();
+                LocalizationChecks.Run(Check, fixtures);
+            }
+            else if (trayOnly)
             {
                 CreateTestApplication();
                 TrayIconChecks.Run(Check, fixtures);
@@ -47,6 +53,7 @@ internal static class Program
                 CheckTargetsAndStorage();
                 CheckGitAsync().GetAwaiter().GetResult();
                 CheckWindows();
+                LocalizationChecks.Run(Check, fixtures);
                 EdgeDockChecks.Run(Check, fixtures);
                 TrayIconChecks.Run(Check, fixtures);
             }
@@ -168,7 +175,16 @@ internal static class Program
         Check((await Run("fetch")).Success, "Fetch against isolated local remote");
         Check((await Run("pull", "--ff-only")).Success, "Fast-forward-only pull against isolated local remote");
         Check((await Run("push")).Success, "Push against isolated local remote");
-        Check(await git.FindRepositoryAsync(fixtures) is null, "Non-repository detection");
+        var outsideRepository = Path.Combine(fixtures, "non-repository");
+        Directory.CreateDirectory(outsideRepository);
+        var previousCeiling = Environment.GetEnvironmentVariable("GIT_CEILING_DIRECTORIES");
+        try
+        {
+            // The test fixtures live inside this checkout; stop Git before it discovers the parent repository.
+            Environment.SetEnvironmentVariable("GIT_CEILING_DIRECTORIES", Path.GetDirectoryName(fixtures));
+            Check(await git.FindRepositoryAsync(outsideRepository) is null, "Non-repository detection");
+        }
+        finally { Environment.SetEnvironmentVariable("GIT_CEILING_DIRECTORIES", previousCeiling); }
         var failed = await git.RunAsync(repo, ["not-a-valid-git-command"]);
         Check(!failed.Success && failed.Output.Length > 0, "Nonzero exit code and stderr captured");
         using var canceled = new CancellationTokenSource();
@@ -268,7 +284,7 @@ internal static class Program
         });
     }
 
-    private static void Render(Window window, string name, double width, double height)
+    internal static void Render(Window window, string name, double width, double height)
     {
         var content = (FrameworkElement)window.Content;
         if (window.SizeToContent == SizeToContent.Height)

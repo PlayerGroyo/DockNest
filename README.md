@@ -1,5 +1,7 @@
 # DockNest
 
+简体中文 | [English](README.en.md)
+
 本机自用的 Windows 分组收藏工具。保留原文件位置，把常用文件、文件夹、网页和网络共享集中到一个窗口中。
 
 ## 使用
@@ -51,9 +53,13 @@
 
 ![浅色主界面：与深色主题一致的分组、搜索和条目快捷操作](docs/screenshots/main-light.png)
 
-点右上角的齿轮按钮打开设置，可修改显示 / 隐藏快捷键、贴边自动隐藏、窗口置顶和 Git 程序路径，也可查看数据目录。
+点右上角的齿轮按钮打开设置，可修改界面语言、显示 / 隐藏快捷键、贴边自动隐藏、窗口置顶和 Git 程序路径，也可查看数据目录。
 
-![设置：显示隐藏快捷键、贴边自动隐藏、窗口置顶、Git 路径与数据目录](docs/screenshots/settings.png)
+**切换语言：设置 → 界面语言 / Language → 简体中文或 English → 保存。** 保存后立即更新主界面、托盘菜单和后续打开的弹窗，无需重启；下次启动会恢复选择。取消设置不会切换语言。首次启动及旧版本数据默认使用简体中文。
+
+收藏名称、分组名称和路径保留原样。系统文件选择器、原生消息框按钮与系统错误信息由 Windows 提供，Git 命令输出保留 Git 原文。
+
+![设置：中英文语言选择、显示隐藏快捷键、贴边自动隐藏、窗口置顶、Git 路径与数据目录](docs/screenshots/settings.png)
 
 ### 键盘快捷键
 
@@ -81,7 +87,7 @@
 
 ## 数据
 
-默认保存到 `%LOCALAPPDATA%\DockNest\state.json`，包括分组、收藏、主题、快捷键和窗口位置。使用临时文件及原子替换写入，保留上一版 `state.json.bak`。
+默认保存到 `%LOCALAPPDATA%\DockNest\state.json`，包括分组、收藏、主题、语言、快捷键和窗口位置。使用临时文件及原子替换写入，保留上一版 `state.json.bak`。
 
 JSON 损坏时尝试恢复备份，损坏文件另存为 `.corrupt-时间戳`；无法恢复则保留文件并提示错误。较新版本的数据会拒绝读取，避免降级覆盖。程序以单实例运行，避免多个窗口同时写入。
 
@@ -89,7 +95,7 @@ JSON 损坏时尝试恢复备份，损坏文件另存为 `.corrupt-时间戳`；
 
 ## 开发与本机发布
 
-沿用现有的 **.NET 8 WPF** 项目；构建需要 .NET 8 或兼容的新版本 SDK，运行需要 .NET 8 Desktop Runtime。当前电脑已具备 SDK 和 Desktop Runtime。
+沿用现有的 **.NET 8 WPF** 项目；构建需要 .NET 8 或兼容的新版本 SDK，运行需要 .NET 8 Desktop Runtime。
 
 ```powershell
 dotnet build DockNest.csproj
@@ -99,7 +105,7 @@ dotnet publish DockNest.csproj -c Release -r win-x64 --self-contained false -p:D
 
 本机运行 `artifacts/publish/DockNest.exe`，保留旁边的 DLL、配置文件等完整内容。Git 仍使用本机安装的版本，不打进发布包。
 
-目录职责：`Models` 保存数据结构，`ViewModels` 管理分组与筛选，`Services` 处理持久化、路径、Git、主题及窗口行为，`Interop` 封装 Win32，`Views` 为任务弹窗，`Themes` 为样式，`Assets` 为应用图标。窗口代码负责事件和对话框，业务服务可独立验证。
+目录职责：`Models` 保存数据结构，`ViewModels` 管理分组与筛选，`Services` 处理持久化、路径、Git、主题、语言及窗口行为，`Interop` 封装 Win32，`Views` 为任务弹窗，`Themes` 为样式，`Localization` 为内嵌的中英文文字资源，`Assets` 为应用图标。窗口代码负责事件和对话框，业务服务可独立验证。
 
 ## 验证
 
@@ -119,7 +125,13 @@ dotnet run --project Tests/DockNest.Checks.csproj -- --docking artifacts/verific
 dotnet run --project Tests/DockNest.Checks.csproj -- --tray artifacts/verification
 ```
 
-验证输出集中在 `artifacts/verification`：`result.json` 为全部检查结果，`docking-result.json` 为停靠专项结果，`tray-result.json` 为托盘专项结果，PNG 为真实 WPF 控件渲染，`fixtures/` 为每次运行独立的收藏数据、Git 仓库和本地裸远端。测试不会使用真实收藏目录，也不会向远程 Git 服务推送。
+仅验证中英文切换、设置保存 / 取消、旧数据兼容、托盘更新和重启恢复：
+
+```powershell
+dotnet run --project Tests/DockNest.Checks.csproj -- --localization artifacts/verification
+```
+
+验证输出集中在 `artifacts/verification`：`result.json` 为全部检查结果，`docking-result.json`、`tray-result.json`、`localization-result.json` 分别为停靠、托盘和语言专项结果，PNG 为真实 WPF 控件渲染，`fixtures/` 为每次运行独立的收藏数据、Git 仓库和本地裸远端。测试不会使用真实收藏目录，也不会向远程 Git 服务推送。
 
 覆盖路径识别、离线 UNC、重复处理、分组搜索、原文件保留、持久化与损坏恢复、Git worktree / diff / 本地 fetch-pull-push / 取消、快捷键冲突、Win32 窗口停靠状态、系统托盘及深浅主题渲染。停靠测试使用真实窗口、计时器和窗口层级，加受控的鼠标坐标输入，验证反复隐藏展开、置顶窗口遮挡、焦点保留及退出停靠；托盘测试查询实际 Windows 图标注册，并向托盘消息窗口发送点击回调，验证显示、弹窗保护、取消退出、保存和释放。测试宿主只加载应用资源，不运行正式程序的单实例及用户数据启动逻辑。鼠标实际操作、多显示器混合 DPI、真实 SMB 认证、远程 Git 凭据仍需在使用环境中验证。
 

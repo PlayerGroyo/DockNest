@@ -1,3 +1,4 @@
+using L = DockNest.Services.LocalizationService;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -15,7 +16,8 @@ public sealed class StateStore
 
     public string DirectoryPath { get; }
     public string FilePath => Path.Combine(DirectoryPath, "state.json");
-    public string? RecoveryNotice { get; private set; }
+    private string? recoveredDataPath;
+    public string? RecoveryNotice => recoveredDataPath is null ? null : L.Format("StateRecovered", recoveredDataPath);
 
     public StateStore(string? directoryPath = null)
     {
@@ -33,13 +35,13 @@ public sealed class StateStore
             try { recovered = Read(FilePath + ".bak"); }
             catch (Exception backupError) when (backupError is IOException or JsonException or InvalidDataException)
             {
-                throw new InvalidDataException($"收藏数据无法读取。原文件已保留，请检查：\n{FilePath}", error);
+                throw new InvalidDataException(L.Format("StateReadFailed", FilePath), error);
             }
 
             var damagedPath = FilePath + $".corrupt-{DateTime.Now:yyyyMMdd-HHmmssfff}";
             File.Copy(FilePath, damagedPath, false);
             File.Copy(FilePath + ".bak", FilePath, true);
-            RecoveryNotice = $"已从上一次备份恢复收藏。损坏的数据保留在 {damagedPath}";
+            recoveredDataPath = damagedPath;
             return recovered;
         }
     }
@@ -63,7 +65,7 @@ public sealed class StateStore
     {
         using var stream = File.OpenRead(path);
         var state = JsonSerializer.Deserialize<AppState>(stream, Options)
-                    ?? throw new InvalidDataException("收藏数据为空。");
+                    ?? throw new InvalidDataException(L.Get("StateEmpty"));
         Validate(state);
         return state;
     }
@@ -71,20 +73,20 @@ public sealed class StateStore
     private static void Validate(AppState state)
     {
         if (state.Version != 1)
-            throw new NotSupportedException("此收藏文件来自较新的版本，请使用对应版本打开。原数据未更改。");
+            throw new NotSupportedException(L.Get("StateNewer"));
         if (state.Groups is null || state.Settings is null)
-            throw new InvalidDataException("无法识别此版本的收藏数据。");
+            throw new InvalidDataException(L.Get("StateInvalid"));
         var ids = new HashSet<Guid>();
         foreach (var group in state.Groups)
         {
             if (group is null || group.Id == Guid.Empty || !ids.Add(group.Id) ||
                 string.IsNullOrWhiteSpace(group.Name) || group.Items is null)
-                throw new InvalidDataException("分组数据无效。");
+                throw new InvalidDataException(L.Get("GroupInvalid"));
             foreach (var item in group.Items)
                 if (item is null || item.Id == Guid.Empty || !ids.Add(item.Id) ||
                     string.IsNullOrWhiteSpace(item.Name) || string.IsNullOrWhiteSpace(item.Target) ||
                     !Enum.IsDefined(item.Kind))
-                    throw new InvalidDataException("收藏项数据无效。");
+                    throw new InvalidDataException(L.Get("BookmarkInvalid"));
         }
     }
 }

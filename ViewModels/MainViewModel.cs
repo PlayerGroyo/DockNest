@@ -1,3 +1,4 @@
+using L = DockNest.Services.LocalizationService;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using DockNest.Models;
@@ -14,15 +15,15 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private BookmarkGroup? selectedGroup;
     [ObservableProperty] private string searchText = "";
     [ObservableProperty] private int filterIndex;
-    [ObservableProperty] private string status = "就绪 · 将文件或文件夹拖入窗口即可收藏";
+    [ObservableProperty] private string status = L.Get("Ready");
 
-    public string Heading => SelectedGroup?.Name ?? "全部收藏";
-    public string Description => SelectedGroup is null ? "常用的文件、文件夹和链接，都在这里。" : "一个空间，收好这一组常用位置。";
+    public string Heading => SelectedGroup?.Name ?? L.Get("AllBookmarks");
+    public string Description => SelectedGroup is null ? L.Get("AllDescription") : L.Get("GroupDescription");
     public int TotalCount => Groups.Sum(g => g.Items.Count);
-    public string CountLabel => $"{VisibleItems.Count} 个收藏";
+    public string CountLabel => L.Format(VisibleItems.Count == 1 ? "CountOne" : "CountMany", VisibleItems.Count);
     public bool IsEmpty => VisibleItems.Count == 0;
-    public string EmptyTitle => SearchText.Length > 0 || FilterIndex != 0 ? "没有找到匹配的收藏" : "把常用的位置，收进来";
-    public string EmptyDescription => SearchText.Length > 0 || FilterIndex != 0 ? "换个关键词，或试试其他类型。" : "拖入文件或文件夹，也可以添加网页和网络位置。\n只保存地址，原文件始终留在原处。";
+    public string EmptyTitle => SearchText.Length > 0 || FilterIndex != 0 ? L.Get("NoMatches") : L.Get("EmptyTitle");
+    public string EmptyDescription => SearchText.Length > 0 || FilterIndex != 0 ? L.Get("NoMatchesHint") : L.Get("EmptyDescription");
     public string DataPath => store.DirectoryPath;
 
     public MainViewModel(StateStore store, AppState state)
@@ -48,6 +49,12 @@ public partial class MainViewModel : ObservableObject
         if (kind is not null) items = items.Where(i => i.Kind == kind);
         VisibleItems.Clear();
         foreach (var item in items) VisibleItems.Add(item);
+        RefreshLanguage();
+    }
+
+    public void RefreshLanguage()
+    {
+        foreach (var item in Groups.SelectMany(group => group.Items)) item.RefreshLanguage();
         foreach (var property in new[] { nameof(Heading), nameof(Description), nameof(TotalCount), nameof(CountLabel), nameof(IsEmpty), nameof(EmptyTitle), nameof(EmptyDescription) })
             OnPropertyChanged(property);
     }
@@ -61,9 +68,9 @@ public partial class MainViewModel : ObservableObject
     public BookmarkGroup AddGroup(string name)
     {
         name = name.Trim();
-        if (name.Length == 0) throw new ArgumentException("请输入分组名称。");
+        if (name.Length == 0) throw new ArgumentException(L.Get("GroupNameRequired"));
         if (Groups.Any(g => string.Equals(g.Name, name, StringComparison.CurrentCultureIgnoreCase)))
-            throw new ArgumentException("已经有同名分组。");
+            throw new ArgumentException(L.Get("DuplicateGroup"));
         var group = new BookmarkGroup { Name = name };
         Groups.Add(group);
         SelectedGroup = group;
@@ -86,7 +93,7 @@ public partial class MainViewModel : ObservableObject
         var source = FindGroup(item);
         if (source is null || source == destination) return false;
         if (destination.Items.Any(i => TargetService.IsSameTarget(i.Target, item.Target)))
-            throw new InvalidOperationException("目标分组已经收藏了这个地址。");
+            throw new InvalidOperationException(L.Get("DuplicateMove"));
         source.Items.Remove(item);
         destination.Items.Add(item);
         Save();

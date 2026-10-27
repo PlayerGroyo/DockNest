@@ -10,6 +10,7 @@ public sealed class AppState
 public sealed class AppSettings
 {
     public string Theme { get; set; } = "Dark";
+    public string Language { get; set; } = "zh-CN";
     public bool AlwaysOnTop { get; set; }
     public bool AutoHide { get; set; } = true;
     public uint HotkeyModifiers { get; set; } = 2; // MOD_CONTROL

@@ -1,3 +1,4 @@
+using L = DockNest.Services.LocalizationService;
 using System.Windows.Input;
 using System.Windows.Interop;
 using DockNest.Interop;
@@ -41,7 +42,7 @@ public sealed class HotkeyService : IDisposable
         if ((modifiers & 1) != 0) parts.Add("Alt");
         if ((modifiers & 4) != 0) parts.Add("Shift");
         if ((modifiers & 8) != 0) parts.Add("Win");
-        parts.Add(key == 0x20 ? "空格" : KeyInterop.KeyFromVirtualKey((int)key).ToString());
+        parts.Add(key == 0x20 ? L.Get("SpaceKey") : KeyInterop.KeyFromVirtualKey((int)key).ToString());
         return string.Join(" + ", parts);
     }
 

@@ -1,3 +1,4 @@
+using L = DockNest.Services.LocalizationService;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -58,8 +59,8 @@ public class EditorWindow : Window
     protected void Finish(Action save)
     {
         Fields.Children.Add(Error);
-        ActionButton("取消", Close);
-        ActionButton("保存", () => { try { save(); DialogResult = true; } catch (Exception error) { Error.Text = error.Message; } }, true).IsDefault = true;
+        ActionButton(L.Get("Cancel"), Close);
+        ActionButton(L.Get("Save"), () => { try { save(); DialogResult = true; } catch (Exception error) { Error.Text = error.Message; } }, true).IsDefault = true;
     }
 }
 
@@ -67,12 +68,12 @@ public sealed class NameDialog : EditorWindow
 {
     private readonly TextBox name = new();
     public string Value => name.Text.Trim();
-    public NameDialog(string title, string initial = "") : base(title, "给这一组收藏起个容易辨认的名字。")
+    public NameDialog(string title, string initial = "") : base(title, L.Get("GroupHint"))
     {
         name.Text = initial;
         name.MaxLength = 60;
-        Field("分组名称", name);
-        Finish(() => { if (Value.Length == 0) throw new ArgumentException("请输入分组名称。"); });
+        Field(L.Get("GroupName"), name);
+        Finish(() => { if (Value.Length == 0) throw new ArgumentException(L.Get("GroupNameRequired")); });
         Loaded += (_, _) => { name.Focus(); name.SelectAll(); };
     }
 }
@@ -87,36 +88,36 @@ public sealed class BookmarkDialog : EditorWindow
     public BookmarkGroup SelectedGroup => (BookmarkGroup)group.SelectedItem;
 
     public BookmarkDialog(IEnumerable<BookmarkGroup> groups, BookmarkGroup? selected, Bookmark? item = null)
-        : base(item is null ? "添加收藏" : "编辑收藏", "保存一个地址，随时快速打开。支持文件、文件夹、网页和网络共享。")
+        : base(item is null ? L.Get("AddBookmark") : L.Get("EditBookmark"), L.Get("BookmarkHint"))
     {
         original = item;
         group.ItemsSource = groups;
         group.SelectedItem = selected ?? groups.FirstOrDefault();
         name.Text = item?.Name ?? "";
         target.Text = item?.Target ?? "";
-        Field("地址", target);
+        Field(L.Get("Address"), target);
         var browse = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 9, 0, 0) };
-        var fileButton = new Button { Content = "选择文件", Padding = new Thickness(12, 6, 12, 6) };
+        var fileButton = new Button { Content = L.Get("ChooseFile"), Padding = new Thickness(12, 6, 12, 6) };
         fileButton.Click += (_, _) => { var picker = new OpenFileDialog(); if (picker.ShowDialog(this) == true) target.Text = picker.FileName; };
-        var folderButton = new Button { Content = "选择文件夹", Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(8, 0, 0, 0) };
+        var folderButton = new Button { Content = L.Get("ChooseFolder"), Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(8, 0, 0, 0) };
         folderButton.Click += (_, _) => { var picker = new OpenFolderDialog(); if (picker.ShowDialog(this) == true) target.Text = picker.FolderName; };
         browse.Children.Add(fileButton);
         browse.Children.Add(folderButton);
         Fields.Children.Add(browse);
-        var example = new TextBlock { Text = @"例如 https://github.com 或 \\192.168.20.5\共享", Margin = new Thickness(0, 9, 0, 0), FontSize = 11 };
+        var example = new TextBlock { Text = L.Get("AddressExample"), Margin = new Thickness(0, 9, 0, 0), FontSize = 11 };
         example.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
         Fields.Children.Add(example);
-        Field("显示名称（留空使用文件名或域名）", name);
-        Field("收藏到分组", group);
+        Field(L.Get("DisplayName"), name);
+        Field(L.Get("BookmarkGroup"), group);
         Finish(() =>
         {
-            if (group.SelectedItem is null) throw new ArgumentException("请选择分组。");
+            if (group.SelectedItem is null) throw new ArgumentException(L.Get("GroupRequired"));
             // A missing target may still be renamed without losing the existing reference.
             Result = original is not null && target.Text.Trim() == original.Target
                 ? new Bookmark { Id = original.Id, Name = string.IsNullOrWhiteSpace(name.Text) ? original.Name : name.Text.Trim(), Target = original.Target, Kind = original.Kind }
                 : TargetService.Create(target.Text, name.Text);
             if (SelectedGroup.Items.Any(i => i.Id != original?.Id && TargetService.IsSameTarget(i.Target, Result.Target)))
-                throw new ArgumentException("这个分组已经收藏了该地址。");
+                throw new ArgumentException(L.Get("DuplicateBookmark"));
         });
         Loaded += (_, _) => target.Focus();
     }
@@ -124,10 +125,22 @@ public sealed class BookmarkDialog : EditorWindow
 
 public sealed class SettingsWindow : EditorWindow
 {
+    private sealed record LanguageOption(string Code, string Name);
     private uint modifiers, key;
     public SettingsWindow(AppSettings settings, Func<uint, uint, bool> registerHotkey, string dataPath)
-        : base("设置", "按照自己的习惯，安排这个收藏空间。")
+        : base(L.Get("Settings"), L.Get("SettingsHint"))
     {
+        var language = new ComboBox
+        {
+            Name = "LanguageSelector", DisplayMemberPath = "Name", SelectedValuePath = "Code",
+            ItemsSource = new[] { new LanguageOption("zh-CN", "简体中文"), new LanguageOption("en-US", "English") },
+            SelectedValue = L.Normalize(settings.Language)
+        };
+        System.Windows.Automation.AutomationProperties.SetName(language, L.Get("Language"));
+        Field(L.Get("Language"), language);
+        var languageHint = new TextBlock { Text = L.Get("LanguageHint"), TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 8, 0, 0) };
+        languageHint.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
+        Fields.Children.Add(languageHint);
         modifiers = settings.HotkeyModifiers;
         key = settings.HotkeyKey;
         var hotkey = new TextBox { IsReadOnly = true, Text = HotkeyService.Format(modifiers, key) };
@@ -139,7 +152,7 @@ public sealed class SettingsWindow : EditorWindow
             var combination = Keyboard.Modifiers;
             if ((combination & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Windows)) == 0)
             {
-                Error.Text = "快捷键需要包含 Ctrl、Alt 或 Win。";
+                Error.Text = L.Get("HotkeyModifiersRequired");
                 e.Handled = true;
                 return;
             }
@@ -149,26 +162,27 @@ public sealed class SettingsWindow : EditorWindow
             Error.Text = "";
             e.Handled = true;
         };
-        Field("显示 / 隐藏快捷键（点击后按下新组合）", hotkey);
-        var autoHide = new CheckBox { Content = "拖到屏幕边缘时自动隐藏", IsChecked = settings.AutoHide, Margin = new Thickness(0, 18, 0, 0) };
-        var topmost = new CheckBox { Content = "窗口始终置顶", IsChecked = settings.AlwaysOnTop, Margin = new Thickness(0, 12, 0, 0) };
+        Field(L.Get("HotkeyField"), hotkey);
+        var autoHide = new CheckBox { Content = L.Get("AutoHide"), IsChecked = settings.AutoHide, Margin = new Thickness(0, 18, 0, 0) };
+        var topmost = new CheckBox { Content = L.Get("AlwaysOnTop"), IsChecked = settings.AlwaysOnTop, Margin = new Thickness(0, 12, 0, 0) };
         autoHide.SetResourceReference(Control.ForegroundProperty, "TextBrush");
         topmost.SetResourceReference(Control.ForegroundProperty, "TextBrush");
         Fields.Children.Add(autoHide);
         Fields.Children.Add(topmost);
         var git = new TextBox { Text = settings.GitExecutable };
-        Field("Git 程序（git 或 git.exe 的完整路径）", git);
+        Field(L.Get("GitExecutable"), git);
         var path = new TextBox { Text = dataPath, IsReadOnly = true };
-        Field("数据目录", path);
+        Field(L.Get("DataDirectory"), path);
         Finish(() =>
         {
-            if (string.IsNullOrWhiteSpace(git.Text)) throw new ArgumentException("请填写 Git 程序路径。");
-            if (!registerHotkey(modifiers, key)) throw new InvalidOperationException("这个快捷键已被其他程序占用，请换一个组合。原快捷键保持有效。");
+            if (string.IsNullOrWhiteSpace(git.Text)) throw new ArgumentException(L.Get("GitPathRequired"));
+            if (!registerHotkey(modifiers, key)) throw new InvalidOperationException(L.Get("HotkeyChangeFailed"));
             settings.HotkeyModifiers = modifiers;
             settings.HotkeyKey = key;
             settings.AutoHide = autoHide.IsChecked == true;
             settings.AlwaysOnTop = topmost.IsChecked == true;
             settings.GitExecutable = git.Text.Trim().Trim('"');
+            settings.Language = (string)language.SelectedValue;
         });
     }
 }

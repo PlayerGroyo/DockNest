@@ -1,3 +1,4 @@
+using L = DockNest.Services.LocalizationService;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -58,7 +59,7 @@ public sealed class GitService(string executable = "git")
             await process.WaitForExitAsync(CancellationToken.None);
             await Task.WhenAll(output, errors);
             if (cancellationToken.IsCancellationRequested) throw;
-            throw new TimeoutException("Git 操作超过两分钟，已停止。请检查网络或在终端中完成认证。");
+            throw new TimeoutException(L.Get("GitTimeout"));
         }
         var standardOutput = await output;
         var standardError = await errors;
@@ -79,7 +80,7 @@ public sealed class GitService(string executable = "git")
             text.Append(buffer, 0, keep);
             truncated |= keep < count;
         }
-        if (truncated) text.Append("\n[输出过长，已截断显示。可在终端查看完整内容。]");
+        if (truncated) text.Append("\n" + L.Get("GitTruncated"));
         return text.ToString();
     }
 }

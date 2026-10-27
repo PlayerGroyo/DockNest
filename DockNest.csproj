@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -9,7 +9,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\DockNest.ico</ApplicationIcon>
-    <Version>0.1.6</Version>
+    <Version>0.1.7</Version>
     <Description>分组收藏文件、文件夹和链接的桌面工具。</Description>
   </PropertyGroup>
 
@@ -23,7 +23,8 @@
     <Compile Remove="artifacts\**\*.cs" />
     <Page Remove="artifacts\**\*.xaml" />
     <Resource Include="Assets\DockNest.ico" />
-    <None Update="README.md;LICENSE;THIRD-PARTY-NOTICES.txt" CopyToPublishDirectory="PreserveNewest" />
+    <EmbeddedResource Include="Localization\*.json" LogicalName="DockNest.Localization.%(Filename)%(Extension)" />
+    <None Update="README.md;README.en.md;LICENSE;THIRD-PARTY-NOTICES.txt" CopyToPublishDirectory="PreserveNewest" />
     <None Update="docs\screenshots\*.png" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 

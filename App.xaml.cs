@@ -1,3 +1,4 @@
+using L = DockNest.Services.LocalizationService;
 using System.Windows;
 using DockNest.Services;
 
@@ -18,7 +19,7 @@ public partial class App : Application
         if (!ownsMutex)
         {
             try { using var existing = EventWaitHandle.OpenExisting(@"Local\DockNest.ShowWindow"); existing.Set(); }
-            catch (WaitHandleCannotBeOpenedException) { MessageBox.Show("DockNest 正在启动，请稍后再试。", "DockNest"); }
+            catch (WaitHandleCannotBeOpenedException) { MessageBox.Show(L.Get("AppStarting"), "DockNest"); }
             Shutdown();
             return;
         }
@@ -35,7 +36,7 @@ public partial class App : Application
         }
         catch (Exception error)
         {
-            MessageBox.Show(error.Message, "DockNest 无法启动", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(error.Message, L.Get("StartupFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }
     }

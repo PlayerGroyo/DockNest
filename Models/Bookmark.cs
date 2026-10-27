@@ -1,3 +1,4 @@
+using L = DockNest.Services.LocalizationService;
 using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -13,12 +14,14 @@ public partial class Bookmark : ObservableObject
     [ObservableProperty] private string target = "";
     [ObservableProperty] private BookmarkKind kind;
 
+    internal void RefreshLanguage() => OnPropertyChanged(nameof(KindLabel));
+
     [JsonIgnore] public string KindLabel => Kind switch
     {
-        BookmarkKind.Folder => "文件夹",
-        BookmarkKind.Url => "网页",
-        BookmarkKind.NetworkPath => "网络位置",
-        _ => "文件"
+        BookmarkKind.Folder => L.Get("KindFolder"),
+        BookmarkKind.Url => L.Get("KindUrl"),
+        BookmarkKind.NetworkPath => L.Get("KindNetwork"),
+        _ => L.Get("KindFile")
     };
 
     [JsonIgnore] public string IconGlyph => Kind switch
@@ -33,6 +36,6 @@ public partial class Bookmark : ObservableObject
 public partial class BookmarkGroup : ObservableObject
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    [ObservableProperty] private string name = "新分组";
+    [ObservableProperty] private string name = L.Get("DefaultGroupName");
     public ObservableCollection<Bookmark> Items { get; set; } = [];
 }
