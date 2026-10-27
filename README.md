@@ -4,6 +4,33 @@
 
 本机自用的 Windows 分组收藏工具。保留原文件位置，把常用文件、文件夹、网页和网络共享集中到一个窗口中。
 
+## Beta 下载与发布
+
+Beta 版本发布在 [GitHub Releases](https://github.com/PlayerGroyo/DockNest/releases)，标记为 **Pre-release**。下载后解压整个 ZIP，再运行 `DockNest.exe`：
+
+| 下载包 | 适用情况 |
+| --- | --- |
+| `DockNest-版本-win-x64-self-contained.zip` | 内含 .NET 8 Desktop Runtime，解压即可运行 |
+| `DockNest-版本-win-x64-framework-dependent.zip` | 体积较小，需要先安装 .NET 8 Desktop Runtime x64 |
+| `SHA256SUMS.txt` | 两个 ZIP 的 SHA-256 校验值 |
+
+两个包都包含中英文说明、截图和许可证；Git 仍需单独安装。更新时先退出旧版本，收藏数据保留在 `%LOCALAPPDATA%\DockNest`。
+
+维护者可通过 [Beta release 工作流](https://github.com/PlayerGroyo/DockNest/actions/workflows/beta-release.yml) 发布：
+
+1. 确认 `DockNest.csproj` 中的版本，例如 `0.1.7`，然后推送代码到 GitHub。
+2. 在 **Actions → Beta release → Run workflow** 中选择分支，填写 `v0.1.7-beta.1`。不勾选 `publish` 时只构建，在该次运行的 **Artifacts → beta-packages** 下载验证包；不会创建标签或 Release。
+3. 确认后再次运行，勾选 `publish`。检查通过后会创建对应标签和 GitHub 预发布版本，上传两个 ZIP 与校验文件。
+
+也可直接推送 Beta 标签触发发布：
+
+```powershell
+git tag v0.1.7-beta.1
+git push origin v0.1.7-beta.1
+```
+
+标签必须是 `v主版本.次版本.修订版本-beta.正整数`，前三段必须与项目版本一致。同一版本后续发布使用 `beta.2`、`beta.3`；已发布的版本不会被覆盖，也不会被标记为稳定版 Latest。上传失败会保留草稿，可重跑失败的发布任务。工作流使用 GitHub 自动提供的 `GITHUB_TOKEN`，无需添加个人访问令牌；检查日志、预览图和验证包保留 14 天。
+
 ## 使用
 
 以下截图使用演示收藏和示例数据目录。首次启动为空，不预置示例收藏。
@@ -109,9 +136,25 @@ dotnet publish DockNest.csproj -c Release -r win-x64 --self-contained false -p:D
 
 ## 验证
 
+本机完整检查（需要可交互的 Windows 桌面）：
+
 ```powershell
 dotnet run --project Tests/DockNest.Checks.csproj -- artifacts/verification
 ```
+
+GitHub Actions 使用 CI 模式，运行数据、路径、隔离 Git 仓库、本地化资源和中英文离屏界面渲染检查，不执行系统托盘、全局快捷键、屏幕边缘和焦点交互：
+
+```powershell
+dotnet run --project Tests/DockNest.Checks.csproj -c Release -- --ci artifacts/verification/ci
+```
+
+CI 模式结果写入指定目录的 `ci-result.json`。本机构建与 Actions 相同的 Beta 包：
+
+```powershell
+pwsh -File .github/scripts/Build-BetaPackage.ps1 -Tag v0.1.7-beta.1
+```
+
+输出在 `artifacts/beta`，构建临时文件保留在 `artifacts/verification/beta-packages`。重复本机构建前请移走同名 ZIP；脚本会拒绝覆盖已有包。
 
 仅验证停靠隐藏（包括真实计时器和四边入口的实际窗口尺寸）：
 

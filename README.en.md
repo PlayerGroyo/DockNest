@@ -4,6 +4,33 @@
 
 A Windows desktop tool for organizing bookmarks into groups. Keep frequently used files, folders, websites and network shares in one window while leaving the original files where they are.
 
+## Beta downloads and releases
+
+Beta builds appear on [GitHub Releases](https://github.com/PlayerGroyo/DockNest/releases), marked **Pre-release**. Extract the entire ZIP, then run `DockNest.exe`:
+
+| Download | Requirements |
+| --- | --- |
+| `DockNest-version-win-x64-self-contained.zip` | Includes .NET 8 Desktop Runtime; extract and run |
+| `DockNest-version-win-x64-framework-dependent.zip` | Smaller download; requires .NET 8 Desktop Runtime x64 |
+| `SHA256SUMS.txt` | SHA-256 checksums for both ZIPs |
+
+Both packages include the Chinese and English documentation, screenshots and licenses. Git must be installed separately. Exit the previous version before updating; your bookmarks remain in `%LOCALAPPDATA%\DockNest`.
+
+Maintainers can publish through the [Beta release workflow](https://github.com/PlayerGroyo/DockNest/actions/workflows/beta-release.yml):
+
+1. Confirm the version in `DockNest.csproj`, for example `0.1.7`, and push the source to GitHub.
+2. Open **Actions → Beta release → Run workflow**, choose a branch and enter `v0.1.7-beta.1`. Leave `publish` unchecked to build only. Download the verification packages from **Artifacts → beta-packages** on that run; no tag or Release is created.
+3. Once verified, run it again with `publish` checked. After the checks pass, the workflow creates the tag and GitHub pre-release, with both ZIPs and the checksum file.
+
+Alternatively, push a Beta tag to trigger publication directly:
+
+```powershell
+git tag v0.1.7-beta.1
+git push origin v0.1.7-beta.1
+```
+
+Tags must follow `vMAJOR.MINOR.PATCH-beta.N`, with a positive Beta number and a base version matching the project. Use `beta.2`, `beta.3` and so on for subsequent builds. Published releases are never overwritten or marked as the stable Latest release. Failed uploads leave a draft; rerun the failed release job to retry. The workflow uses GitHub's automatic `GITHUB_TOKEN`, so no personal access token is needed. Verification packages, check results and UI previews are retained for 14 days.
+
 ## Usage
 
 The screenshots use demo bookmarks and example data directories. Your first launch starts with an empty collection.
@@ -109,11 +136,25 @@ Run `artifacts/publish/DockNest.exe` and keep the accompanying DLLs, configurati
 
 ## Verification
 
-Run all checks:
+Run all checks in an interactive Windows desktop session:
 
 ```powershell
 dotnet run --project Tests/DockNest.Checks.csproj -- artifacts/verification
 ```
+
+GitHub Actions uses CI mode for data, targets, isolated Git repositories, localization resources and offscreen Chinese / English rendering. It skips system-tray, global-hotkey, screen-edge and focus interaction checks:
+
+```powershell
+dotnet run --project Tests/DockNest.Checks.csproj -c Release -- --ci artifacts/verification/ci
+```
+
+CI results are written to `ci-result.json` in the chosen output directory. To build the same Beta packages locally:
+
+```powershell
+pwsh -File .github/scripts/Build-BetaPackage.ps1 -Tag v0.1.7-beta.1
+```
+
+Packages are placed in `artifacts/beta`; temporary build files remain in `artifacts/verification/beta-packages`. Move existing ZIPs out of the output directory before repeating a local build; the script refuses to overwrite them.
 
 Check edge docking, including real timers and actual edge-strip dimensions:
 

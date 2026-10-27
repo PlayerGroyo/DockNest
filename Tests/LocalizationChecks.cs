@@ -17,7 +17,7 @@ using L = DockNest.Services.LocalizationService;
 
 internal static class LocalizationChecks
 {
-    internal static void Run(Action<bool, string> check, string fixtures)
+    internal static void CheckResources(Action<bool, string> check)
     {
         var chinese = ReadStrings("zh-CN");
         var english = ReadStrings("en-US");
@@ -29,7 +29,11 @@ internal static class LocalizationChecks
         check(legacy.Settings.Language == "zh-CN", "Profiles without a language keep the existing Chinese default");
         L.Apply("unrecognized");
         check(L.CurrentLanguage == "zh-CN" && L.Get("Settings") == "设置", "Unsupported languages safely fall back to Chinese");
+    }
 
+    internal static void Run(Action<bool, string> check, string fixtures)
+    {
+        CheckResources(check);
         var state = new AppState();
         var store = new StateStore(Path.Combine(fixtures, "language-profile"));
         var window = new MainWindow(store, state, false) { Opacity = 0, ShowInTaskbar = false, ShowActivated = false };

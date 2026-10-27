@@ -27,13 +27,21 @@ internal static class Program
         var dockingOnly = args.Contains("--docking");
         var trayOnly = args.Contains("--tray");
         var localizationOnly = args.Contains("--localization");
-        var resultFile = localizationOnly ? "localization-result.json" : trayOnly ? "tray-result.json" : dockingOnly ? "docking-result.json" : "result.json";
+        var ciOnly = args.Contains("--ci");
+        var resultFile = ciOnly ? "ci-result.json" : localizationOnly ? "localization-result.json" : trayOnly ? "tray-result.json" : dockingOnly ? "docking-result.json" : "result.json";
         artifacts = Path.GetFullPath(args.FirstOrDefault(a => !a.StartsWith("--")) ?? "artifacts/verification");
         fixtures = Path.Combine(artifacts, "fixtures", DateTime.Now.ToString("yyyyMMdd-HHmmssfff"));
         Directory.CreateDirectory(fixtures);
         try
         {
-            if (localizationOnly)
+            if (ciOnly)
+            {
+                CheckTargetsAndStorage();
+                CheckGitAsync().GetAwaiter().GetResult();
+                CheckWindows(includeDesktopChecks: false);
+                LocalizationChecks.CheckResources(Check);
+            }
+            else if (localizationOnly)
             {
                 CreateTestApplication();
                 LocalizationChecks.Run(Check, fixtures);
@@ -197,7 +205,7 @@ internal static class Program
         catch (OperationCanceledException) { Check(timer.Elapsed < TimeSpan.FromSeconds(5), "Cancellation stops running Git and child process"); }
     }
 
-    private static void CheckWindows()
+    private static void CheckWindows(bool includeDesktopChecks = true)
     {
         CreateTestApplication();
         var bindingTrace = new StringWriter();
@@ -225,10 +233,26 @@ internal static class Program
         Render(editor, "add-bookmark.png", 560, 570);
         var settings = new SettingsWindow(state.Settings, (_, _) => true, store.DirectoryPath);
         Render(settings, "settings.png", 560, 580);
+        if (!includeDesktopChecks)
+        {
+            LocalizationService.Apply("en-US");
+            Render(window, "dark-bookmarks-en.png", 1080, 720);
+            ThemeService.Apply("Light");
+            Render(window, "light-minimum-en.png", 780, 520);
+            var englishSettings = new SettingsWindow(new AppSettings { Language = "en-US" }, (_, _) => true, store.DirectoryPath);
+            Render(englishSettings, "settings-en.png", 560, 700);
+            englishSettings.Close();
+            Check(window.ViewModel.Heading == "All bookmarks" && window.ViewModel.CountLabel == "4 bookmarks",
+                "Offscreen main window switches to English without desktop integration");
+            LocalizationService.Apply("zh-CN");
+            ThemeService.Apply("Dark");
+        }
         listener.Flush();
         Check(string.IsNullOrWhiteSpace(bindingTrace.ToString()), "No WPF binding warnings during real control rendering: " + bindingTrace);
         PresentationTraceSources.DataBindingSource.Listeners.Remove(listener);
         Check(File.Exists(Path.Combine(artifacts, "dark-empty.png")), "Empty and populated UI renders saved in both themes");
+        editor.Close(); settings.Close(); window.Close();
+        if (!includeDesktopChecks) return;
 
         // Native interop checks use an invisible, non-activating HWND, with no real user data.
         var nativeWindow = new Window { Width = 800, Height = 540, Opacity = 0, ShowActivated = false, ShowInTaskbar = false, WindowStyle = WindowStyle.None, AllowsTransparency = false, Left = 100, Top = 100 };
@@ -269,7 +293,6 @@ internal static class Program
         Check(new WindowInteropHelper(desktopWindow).Handle != 0 && desktopWindow.IsLoaded, "Main window initializes with real desktop integration");
         desktopWindow.Close();
         Check(File.Exists(desktopStore.FilePath) && desktopStore.Load().Settings.HotkeyKey == 0x87, "Closing the desktop window persists settings");
-        editor.Close(); settings.Close(); window.Close();
     }
 
     private static void CreateTestApplication()
